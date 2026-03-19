@@ -112,7 +112,7 @@ _(Thư mục home của người dùng, tự tạo khi ghi âm lần đầu)_
 |-----------------|------------------------------------------------|
 | Lâm họ Đoàn     | Xây dựng hệ thống, `main.py`                   |
 | ParkDayChun     | `audio.py` – Ghi âm                            |
-| MinhEdras       | `audio.py` – Phát lại, cắt đoạn                |
+| tminhiuem       | `audio.py` – Phát lại, cắt đoạn                |
 | NgocHaiSandwich | `ui.py` – Giao diện                            |
 | Nguyen Khoin    | `waveform.py`, `file_manager.py`, `effects.py` |
 
