@@ -1,59 +1,127 @@
-# 🎧 AudioSystem
+# 🎙️ AudioLab – Ứng dụng Ghi âm & Chỉnh sửa Âm thanh
 
-AudioSystem là một ứng dụng xử lý âm thanh được xây dựng bằng Python, cung cấp các chức năng ghi âm, chỉnh sửa và trực quan hóa tín hiệu âm thanh. Dự án được phát triển nhằm hỗ trợ sinh viên và người học trong việc tìm hiểu về xử lý tín hiệu số (DSP) cũng như các kỹ thuật thao tác với dữ liệu âm thanh trong thực tế.
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
+![CustomTkinter](https://img.shields.io/badge/GUI-CustomTkinter-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
-Ứng dụng cho phép người dùng ghi âm trực tiếp từ microphone, lưu trữ và quản lý các file âm thanh một cách thuận tiện. Bên cạnh đó, hệ thống hỗ trợ chỉnh sửa cơ bản như cắt đoạn âm thanh, thay đổi âm lượng và phát lại với các thao tác tua nhanh hoặc tua chậm. Một điểm nổi bật của dự án là khả năng hiển thị dạng sóng (waveform), giúp người dùng dễ dàng quan sát và phân tích tín hiệu âm thanh một cách trực quan.
+> Ứng dụng xử lý âm thanh được xây dựng bằng Python, hỗ trợ ghi âm, chỉnh sửa, thêm hiệu ứng và trực quan hóa tín hiệu âm thanh thông qua giao diện đồ họa hiện đại.
 
-AudioSystem được xây dựng dựa trên các thư viện phổ biến trong Python như NumPy và SciPy để xử lý dữ liệu số, Matplotlib để trực quan hóa dạng sóng, cùng với PyAudio hoặc sounddevice để thực hiện ghi và phát âm thanh. Nhờ đó, hệ thống vừa đảm bảo tính đơn giản trong triển khai, vừa đủ mạnh để phục vụ mục đích học tập và nghiên cứu.
+---
 
-## ⚙️ Cài đặt và sử dụng
+## ✨ Tính năng
 
-Để cài đặt và sử dụng ứng dụng, trước tiên bạn cần clone repository về máy bằng lệnh:
-git clone https://github.com/LamDoan1412/AudioSystem.git
+| Tính năng | Mô tả |
+|---|---|
+| ⏺ **Ghi âm** | Ghi âm trực tiếp từ microphone, tự động lưu file `.wav` |
+| 📂 **Nhập file** | Hỗ trợ `.wav`, `.mp3`, `.ogg`, `.flac` |
+| 📋 **Quản lý danh sách** | Xem, chọn, đổi tên, xóa file |
+| ▶ **Phát lại** | Phát file đã chọn với thanh tua linh hoạt |
+| ⚡ **Đổi tốc độ** | Phát ở tốc độ `0.5x / 1.0x / 1.5x / 2.0x` |
+| 🔊 **Âm lượng** | Điều chỉnh từ `0%` đến `200%` |
+| 〰️ **Sóng âm** | Hiển thị waveform khi chọn file |
+| 🖼️ **Xuất PNG** | Lưu ảnh sóng âm ra file `.png` |
+| 🎛️ **Hiệu ứng Echo** | Thêm tiếng vọng lại cho âm thanh |
+| 🌊 **Hiệu ứng Reverb** | Mô phỏng âm vang trong phòng |
+| ✂️ **Cắt đoạn** | Cắt đoạn theo thời gian và lưu file mới |
+| ℹ️ **Thông tin file** | Xem thời lượng, sample rate, kích thước, định dạng |
 
-Sau đó di chuyển vào thư mục dự án và cài đặt các thư viện cần thiết:
-pip install -r requirements.txt
+---
 
-Cuối cùng, chạy chương trình:
-python main.py
-
-## 📁 Cấu trúc thư mục
-
-Dự án được tổ chức theo cấu trúc rõ ràng như sau:
+## 🗂️ Cấu trúc dự án
 
 ```
 AudioSystem/
-│── main.py                 # File chạy chính
-│── requirements.txt        # Danh sách thư viện cần cài
-│── README.md               # Tài liệu mô tả dự án
 │
-├── audio/                  # Chứa dữ liệu âm thanh
-│   ├── input/              # File đầu vào (ghi âm)
-│   └── output/             # File sau khi xử lý
-│
-├── utils/                  # Các module xử lý
-│   ├── audio_processing.py # Xử lý âm thanh (cắt, volume,...)
-│   └── visualization.py    # Hiển thị waveform
-│
-└── assets/                 # (Tuỳ chọn) hình ảnh, demo
+├── main.py            ← Khởi chạy ứng dụng
+├── ui.py              ← Giao diện chính (CustomTkinter)
+├── audio.py           ← Xử lý âm thanh (ghi, phát, cắt, tua)
+├── effects.py         ← Hiệu ứng âm thanh (Echo, Reverb, Speed)
+├── file_manager.py    ← Quản lý danh sách file
+├── waveform.py        ← Vẽ sóng âm và xuất PNG
+├── requirements.txt   ← Danh sách thư viện
+└── README.md          ← Tài liệu dự án
 ```
 
-Cấu trúc này giúp dễ dàng mở rộng và quản lý các thành phần của hệ thống, đặc biệt khi phát triển thêm các tính năng mới.
+---
 
-## 🚀 Định hướng phát triển
+## ⚙️ Cài đặt và chạy
 
-Trong tương lai, dự án có thể được mở rộng với:
+### Yêu cầu
+- Python **3.9** trở lên
+- PyCharm hoặc VS Code
 
-* Xây dựng giao diện người dùng (GUI) bằng Tkinter hoặc PyQt
-* Thêm các hiệu ứng âm thanh như reverb, echo
-* Tích hợp AI để lọc nhiễu
-* Hỗ trợ nhiều định dạng file âm thanh hơn
+### Bước 1 — Clone repo
+```bash
+git clone https://github.com/LamDoan1412/AudioSystem.git
+cd AudioSystem
+```
 
-## 👨‍💻 Tác giả
+### Bước 2 — Cài thư viện
+```bash
+pip install -r requirements.txt
+```
 
-Lâm họ Đoàn
+### Bước 3 — Chạy ứng dụng
+```bash
+python main.py
+```
+
+---
+
+## 📦 Thư viện sử dụng
+
+| Thư viện | Phiên bản | Mục đích |
+|---|---|---|
+| `customtkinter` | ≥ 5.2.0 | Giao diện đồ họa hiện đại |
+| `sounddevice` | ≥ 0.4.6 | Ghi âm và phát âm thanh |
+| `soundfile` | ≥ 0.12.1 | Đọc/ghi file âm thanh |
+| `numpy` | ≥ 1.24.0 | Xử lý mảng tín hiệu số |
+| `matplotlib` | ≥ 3.7.0 | Vẽ sóng âm (waveform) |
+| `pydub` | ≥ 0.25.1 | Xử lý định dạng âm thanh |
+
+---
+
+## 🏗️ Kiến trúc hệ thống
+
+```
+main.py
+  └── ui.py  (AudioLabApp)
+        ├── audio.py        (AudioEngine)
+        │     └── effects.py   (AudioEffects)
+        ├── file_manager.py  (FileManager)
+        └── waveform.py     (WaveformWidget)
+```
+
+Mỗi module hoạt động **độc lập**, `ui.py` đóng vai trò kết nối tất cả thông qua callback.
+
+---
+
+## 💾 File ghi âm lưu tại
+
+```
+~/AudioLab_Recordings/
+```
+_(Thư mục home của người dùng, tự tạo khi ghi âm lần đầu)_
+
+---
+
+## 👨‍💻 Nhóm phát triển
+
+| Thành viên   | Vai trò                                        |
+|--------------|------------------------------------------------|
+| Lâm họ Đoàn  | Xây dựng hệ thống, `main.py`                   |
+| ParkDayChun  | `audio.py` – Ghi âm                            |
+| MinhEdras    | `audio.py` – Phát lại, cắt đoạn                |
+| NMH          | `ui.py` – Giao diện                            |
+| Nguyen Khoin | `waveform.py`, `file_manager.py`, `effects.py` |
+
+---
 
 ## 📄 License
 
-Dự án phục vụ mục đích học tập và nghiên cứu.
+Dự án phục vụ mục đích **học tập và nghiên cứu** — Môn Lập trình Âm thanh.
 
+---
+
+🔗 Repository: [github.com/LamDoan1412/AudioSystem](https://github.com/LamDoan1412/AudioSystem)
