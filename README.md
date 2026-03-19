@@ -108,13 +108,13 @@ _(Thư mục home của người dùng, tự tạo khi ghi âm lần đầu)_
 
 ## 👨‍💻 Nhóm phát triển
 
-| Thành viên   | Vai trò                                        |
-|--------------|------------------------------------------------|
-| Lâm họ Đoàn  | Xây dựng hệ thống, `main.py`                   |
-| ParkDayChun  | `audio.py` – Ghi âm                            |
-| MinhEdras    | `audio.py` – Phát lại, cắt đoạn                |
-| NMH          | `ui.py` – Giao diện                            |
-| Nguyen Khoin | `waveform.py`, `file_manager.py`, `effects.py` |
+| Thành viên      | Vai trò                                        |
+|-----------------|------------------------------------------------|
+| Lâm họ Đoàn     | Xây dựng hệ thống, `main.py`                   |
+| ParkDayChun     | `audio.py` – Ghi âm                            |
+| MinhEdras       | `audio.py` – Phát lại, cắt đoạn                |
+| NgocHaiSandwich | `ui.py` – Giao diện                            |
+| Nguyen Khoin    | `waveform.py`, `file_manager.py`, `effects.py` |
 
 ---
 
