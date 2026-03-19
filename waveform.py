@@ -5,6 +5,7 @@ Module hiển thị sơ đồ sóng âm (waveform):
   - Vẽ waveform từ numpy array
   - Vẽ đường chỉ vị trí phát hiện tại
   - Reset về trạng thái rỗng
+  - Xuất ảnh sóng âm ra file PNG
   - Tích hợp vào khung CTkFrame bất kỳ
 """
 
@@ -16,17 +17,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 class WaveformWidget:
-    """
-    Widget sóng âm nhúng vào một CTkFrame.
-
-    Cách dùng:
-        wf = WaveformWidget(parent_frame)
-        wf.draw(audio_data, sample_rate)
-        wf.set_playhead(current_sec)
-        wf.reset()
-    """
-
-    # Màu sắc
     COLOR_BG        = "#1e1e2e"
     COLOR_WAVE_FILL = "#3498db"
     COLOR_WAVE_LINE = "#5dade2"
@@ -36,14 +26,13 @@ class WaveformWidget:
     COLOR_TICK      = "gray"
 
     def __init__(self, parent):
-        self._duration    = 0.0
-        self._playhead    = None   # đối tượng Line2D
+        self._duration = 0.0
+        self._playhead = None
 
-        # Tạo Figure & Axes
         self.fig = Figure(figsize=(8, 2.8), dpi=96, facecolor=self.COLOR_BG)
         self.ax  = self.fig.add_subplot(111)
 
-        # Nhúng vào tkinter (dùng grid để đồng nhất với ui.py)
+        # Dùng grid để đồng nhất với ui.py
         self.canvas = FigureCanvasTkAgg(self.fig, master=parent)
         widget = self.canvas.get_tk_widget()
         parent.grid_rowconfigure(0, weight=1)
@@ -52,16 +41,13 @@ class WaveformWidget:
 
         self.reset()
 
-    # ──────────────────────────────────────────
-    #  VẼ WAVEFORM
-    # ──────────────────────────────────────────
+    # ── VẼ WAVEFORM ───────────────────────────
     def draw(self, audio_data: np.ndarray, sample_rate: int):
         """Vẽ sóng âm từ mảng audio_data (mono, float32)."""
         self._duration = len(audio_data) / sample_rate
         self.ax.clear()
         self._playhead = None
 
-        # Downsample để vẽ nhanh
         max_pts = 8000
         step    = max(1, len(audio_data) // max_pts)
         samples = audio_data[::step]
@@ -70,35 +56,27 @@ class WaveformWidget:
         self.ax.fill_between(times, samples, alpha=0.55, color=self.COLOR_WAVE_FILL)
         self.ax.plot(times, samples, color=self.COLOR_WAVE_LINE,
                      linewidth=0.6, alpha=0.85)
-
         self._apply_style()
         self.ax.set_xlim(0, self._duration)
         self.fig.tight_layout(pad=0.5)
         self.canvas.draw()
 
-    # ──────────────────────────────────────────
-    #  VẼ ĐƯỜNG PLAYHEAD
-    # ──────────────────────────────────────────
+    # ── PLAYHEAD ──────────────────────────────
     def set_playhead(self, current_sec: float):
-        """Cập nhật vị trí đường chỉ phát (màu đỏ)."""
+        """Cập nhật đường chỉ vị trí phát (màu đỏ)."""
         if self._duration <= 0:
             return
-
-        # Xóa playhead cũ
         if self._playhead is not None:
             try:
                 self._playhead.remove()
             except Exception:
                 pass
-
         self._playhead = self.ax.axvline(
             x=current_sec, color=self.COLOR_PLAYHEAD,
             linewidth=1.5, alpha=0.85)
         self.canvas.draw_idle()
 
-    # ──────────────────────────────────────────
-    #  RESET
-    # ──────────────────────────────────────────
+    # ── RESET ─────────────────────────────────
     def reset(self):
         """Xóa sóng âm, hiển thị thông báo rỗng."""
         self._duration = 0.0
@@ -112,11 +90,20 @@ class WaveformWidget:
         self.fig.tight_layout(pad=0.5)
         self.canvas.draw()
 
-    # ──────────────────────────────────────────
-    #  NỘI BỘ
-    # ──────────────────────────────────────────
+    # ── XUẤT PNG ──────────────────────────────
+    def export_png(self, save_path: str):
+        """
+        Xuất sóng âm hiện tại ra file PNG.
+        save_path: đường dẫn đầy đủ, ví dụ 'D:/recording_001_wave.png'
+        """
+        if self._duration <= 0:
+            raise ValueError("Chưa có sóng âm để xuất!")
+        self.fig.savefig(save_path, dpi=150, bbox_inches="tight",
+                         facecolor=self.COLOR_BG)
+        return save_path
+
+    # ── NỘI BỘ ────────────────────────────────
     def _apply_style(self):
-        """Áp dụng màu nền, trục, nhãn chung."""
         self.ax.set_facecolor(self.COLOR_BG)
         self.ax.tick_params(colors=self.COLOR_TICK, labelsize=8)
         self.ax.set_xlabel("Thời gian (s)", color=self.COLOR_TICK, fontsize=9)
