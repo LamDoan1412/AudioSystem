@@ -123,23 +123,43 @@ class AudioEngine:
 
     def _play_worker(self):
         start = int(self.playback_position * self.audio_sr)
-        data  = self.audio_data[start:] * self.volume_factor
+
+        data = self.audio_data[start:]
+
+        # 🔥 chỉ normalize nhẹ (không full 1.0)
+        max_val = np.max(np.abs(data))
+        if max_val > 0:
+            data = data / max_val * 0.8  # chỉ lên 80%
+
+        # 🔥 boost vừa phải
+        data = data * self.volume_factor * 1.2
+
+        # 🔥 bảo vệ không vỡ tiếng
+        data = np.clip(data, -1.0, 1.0)
+
         if self.speed_factor != 1.0:
             data = AudioEffects.change_speed(data, self.speed_factor)
+
         effective_sr = int(self.audio_sr * self.speed_factor)
+
         chunk = 2048
-        idx   = 0
-        with sd.OutputStream(samplerate=effective_sr, channels=1,
-                              dtype="float32") as stream:
+        idx = 0
+
+        with sd.OutputStream(samplerate=effective_sr, channels=1, dtype="float32") as stream:
             while idx < len(data) and self.is_playing:
                 block = data[idx: idx + chunk]
                 stream.write(block)
-                idx    += chunk
-                remain  = self.duration - self.playback_position
+
+                idx += chunk
+
+                remain = self.duration - self.playback_position
                 current = self.playback_position + (idx / len(data)) * remain
+
                 if self.on_playback_tick:
                     self.on_playback_tick(min(current, self.duration), self.duration)
+
         self.is_playing = False
+
         if self.on_playback_end:
             self.on_playback_end()
 
@@ -148,7 +168,7 @@ class AudioEngine:
         self.playback_position = max(0.0, min(seconds, self.duration))
 
     def set_volume(self, factor: float):
-        self.volume_factor = max(0.0, min(factor, 2.0))
+        self.volume_factor = max(0.0, min(factor, 5.0))
 
     # ── HIỆU ỨNG ──────────────────────────────
     def apply_effect(self, effect: str) -> str:
