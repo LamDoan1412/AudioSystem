@@ -82,9 +82,19 @@ class AudioEngine:
         os.makedirs(save_dir, exist_ok=True)
         idx      = len(os.listdir(save_dir)) + 1
         filepath = os.path.join(save_dir, f"recording_{idx:03d}.wav")
-        # Lưu mono rõ ràng dạng PCM_16
-        sf.write(filepath, audio.flatten(), SAMPLE_RATE, subtype="PCM_16")
-        print(f"[AudioEngine] Đã lưu: {filepath}")
+
+        audio = audio.flatten().astype(np.float32)
+
+        # Normalize biên độ lên 0.9 để đảm bảo nghe rõ
+        # (mic thường ghi rất nhỏ, ~0.01-0.05 so với max 1.0)
+        max_val = np.max(np.abs(audio))
+        if max_val > 0.001:          # có tín hiệu thực sự
+            audio = audio / max_val * 0.9
+        else:
+            print("[AudioEngine] CẢNH BÁO: Tín hiệu ghi âm quá yếu!")
+
+        sf.write(filepath, audio, SAMPLE_RATE, subtype="PCM_16")
+        print(f"[AudioEngine] Đã lưu: {filepath} | peak={max_val:.4f}")
         return filepath
 
     # ── TẢI FILE (ASYNC - không lag UI) ───────
@@ -165,15 +175,19 @@ class AudioEngine:
 
     def _play_worker(self):
         start = int(self.playback_position * self.audio_sr)
-        # Lấy slice — KHÔNG copy toàn bộ mảng
-        data  = self.audio_data[start:]
+        data  = self.audio_data[start:].copy()
 
-        # Áp dụng volume và clip theo từng chunk thay vì toàn bộ
+        # Normalize toàn bộ audio lên 0.9 trước khi phát
+        # → đảm bảo file ghi âm nhỏ tiếng vẫn nghe được
+        max_val = np.max(np.abs(data))
+        if max_val > 0.001:
+            data = data / max_val * 0.9
+
         if self.speed_factor != 1.0:
             data = AudioEffects.change_speed(data, self.speed_factor)
 
         effective_sr = int(self.audio_sr * self.speed_factor)
-        chunk        = 4096   # tăng chunk size để giảm overhead
+        chunk        = 4096
         idx          = 0
         total        = len(data)
 
@@ -181,11 +195,8 @@ class AudioEngine:
                               dtype="float32") as stream:
             while idx < total and self.is_playing:
                 block = data[idx: idx + chunk].copy()
-
-                # ✅ Xử lý volume THEO TỪNG CHUNK — không lag
                 block = block * self.volume_factor
                 np.clip(block, -1.0, 1.0, out=block)
-
                 stream.write(block)
                 idx += chunk
 
