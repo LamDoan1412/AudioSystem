@@ -1,14 +1,8 @@
 """
-audio.py
-────────────────────────────────────────────
-Module xử lý âm thanh:
-  - Ghi âm từ microphone
-  - Phát lại file âm thanh (hỗ trợ đổi tốc độ)
-  - Điều chỉnh âm lượng
-  - Tua (seek) đến vị trí bất kỳ
-  - Cắt đoạn âm thanh và lưu file mới
-  - Áp dụng hiệu ứng Echo / Reverb
-  - Lấy thông tin file (thời lượng, sample rate, kích thước)
+audio.py - FIX LAG khi load file
+- load_file() chạy trong thread riêng, không block UI
+- _play_worker() không normalize toàn bộ mảng trước khi phát
+- Thêm callback on_load_done để UI biết khi nào load xong
 """
 
 import os
@@ -35,9 +29,12 @@ class AudioEngine:
         self.speed_factor      = 1.0
         self._current_filepath = None
 
-        self.on_save_done      = None
-        self.on_playback_tick  = None
-        self.on_playback_end   = None
+        # Callbacks
+        self.on_save_done      = None   # fn(filepath)
+        self.on_load_done      = None   # fn()  ← MỚI: báo load xong
+        self.on_load_error     = None   # fn(msg) ← MỚI: báo lỗi load
+        self.on_playback_tick  = None   # fn(current, total)
+        self.on_playback_end   = None   # fn()
 
     # ── GHI ÂM ────────────────────────────────
     def start_recording(self):
@@ -51,13 +48,31 @@ class AudioEngine:
     def _record_worker(self):
         def callback(indata, frames, time_info, status):
             if self.is_recording:
-                self.record_buffer.append(indata.copy())
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS,
-                            dtype=RECORD_DTYPE, callback=callback):
+                # Convert về mono ngay trong callback
+                chunk = indata.copy()
+                if chunk.ndim > 1:
+                    chunk = chunk.mean(axis=1, keepdims=True)
+                self.record_buffer.append(chunk)
+
+        # Lấy số channel thực của mic để tránh lỗi trên Windows
+        try:
+            device_info = sd.query_devices(kind="input")
+            in_channels = min(int(device_info["max_input_channels"]), 2)
+        except Exception:
+            in_channels = 1
+
+        with sd.InputStream(samplerate=SAMPLE_RATE,
+                            channels=in_channels,
+                            dtype=RECORD_DTYPE,
+                            callback=callback):
             while self.is_recording:
                 sd.sleep(100)
+
         if self.record_buffer:
-            audio    = np.concatenate(self.record_buffer, axis=0)
+            audio = np.concatenate(self.record_buffer, axis=0)
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            audio = audio.astype(np.float32)
             filepath = self._save_wav(audio)
             if self.on_save_done:
                 self.on_save_done(filepath)
@@ -67,18 +82,47 @@ class AudioEngine:
         os.makedirs(save_dir, exist_ok=True)
         idx      = len(os.listdir(save_dir)) + 1
         filepath = os.path.join(save_dir, f"recording_{idx:03d}.wav")
-        sf.write(filepath, audio, SAMPLE_RATE)
+        # Lưu mono rõ ràng dạng PCM_16
+        sf.write(filepath, audio.flatten(), SAMPLE_RATE, subtype="PCM_16")
+        print(f"[AudioEngine] Đã lưu: {filepath}")
         return filepath
 
-    # ── TẢI FILE ──────────────────────────────
+    # ── TẢI FILE (ASYNC - không lag UI) ───────
     def load_file(self, filepath: str):
-        data, sr = sf.read(filepath, dtype="float32")
-        if data.ndim > 1:
-            data = data.mean(axis=1)
-        self.audio_data        = data
-        self.audio_sr          = sr
-        self.playback_position = 0.0
-        self._current_filepath = filepath
+        """
+        Load file trong thread riêng — KHÔNG block UI.
+        Kết quả trả về qua:
+            on_load_done()        khi xong
+            on_load_error(msg)    khi lỗi
+        """
+        threading.Thread(
+            target=self._load_worker,
+            args=(filepath,),
+            daemon=True
+        ).start()
+
+    def _load_worker(self, filepath: str):
+        try:
+            data, sr = sf.read(filepath, dtype="float32")
+            if data.ndim > 1:
+                data = data.mean(axis=1)   # stereo → mono
+
+            # Lưu vào engine
+            self.audio_data        = data
+            self.audio_sr          = sr
+            self.playback_position = 0.0
+            self._current_filepath = filepath
+
+            print(f"[AudioEngine] Load xong: {os.path.basename(filepath)} "
+                  f"| {self.duration:.1f}s | {sr}Hz")
+
+            if self.on_load_done:
+                self.on_load_done()
+
+        except Exception as e:
+            print(f"[AudioEngine] Lỗi load: {e}")
+            if self.on_load_error:
+                self.on_load_error(str(e))
 
     @property
     def duration(self) -> float:
@@ -88,7 +132,6 @@ class AudioEngine:
 
     # ── THÔNG TIN FILE ────────────────────────
     def get_file_info(self) -> dict:
-        """Trả về dict thông tin file: duration, sample_rate, filesize, format."""
         if self.audio_data is None or self._current_filepath is None:
             return {}
         total_sec  = int(self.duration)
@@ -118,48 +161,40 @@ class AudioEngine:
         sd.stop()
 
     def set_speed(self, speed: float):
-        """Đặt tốc độ phát: 0.5 / 1.0 / 1.5 / 2.0"""
         self.speed_factor = speed
 
     def _play_worker(self):
         start = int(self.playback_position * self.audio_sr)
+        # Lấy slice — KHÔNG copy toàn bộ mảng
+        data  = self.audio_data[start:]
 
-        data = self.audio_data[start:]
-
-        # 🔥 chỉ normalize nhẹ (không full 1.0)
-        max_val = np.max(np.abs(data))
-        if max_val > 0:
-            data = data / max_val * 0.8  # chỉ lên 80%
-
-        # 🔥 boost vừa phải
-        data = data * self.volume_factor * 1.2
-
-        # 🔥 bảo vệ không vỡ tiếng
-        data = np.clip(data, -1.0, 1.0)
-
+        # Áp dụng volume và clip theo từng chunk thay vì toàn bộ
         if self.speed_factor != 1.0:
             data = AudioEffects.change_speed(data, self.speed_factor)
 
         effective_sr = int(self.audio_sr * self.speed_factor)
+        chunk        = 4096   # tăng chunk size để giảm overhead
+        idx          = 0
+        total        = len(data)
 
-        chunk = 2048
-        idx = 0
+        with sd.OutputStream(samplerate=effective_sr, channels=1,
+                              dtype="float32") as stream:
+            while idx < total and self.is_playing:
+                block = data[idx: idx + chunk].copy()
 
-        with sd.OutputStream(samplerate=effective_sr, channels=1, dtype="float32") as stream:
-            while idx < len(data) and self.is_playing:
-                block = data[idx: idx + chunk]
+                # ✅ Xử lý volume THEO TỪNG CHUNK — không lag
+                block = block * self.volume_factor
+                np.clip(block, -1.0, 1.0, out=block)
+
                 stream.write(block)
-
                 idx += chunk
 
-                remain = self.duration - self.playback_position
-                current = self.playback_position + (idx / len(data)) * remain
-
+                remain  = self.duration - self.playback_position
+                current = self.playback_position + (idx / total) * remain
                 if self.on_playback_tick:
                     self.on_playback_tick(min(current, self.duration), self.duration)
 
         self.is_playing = False
-
         if self.on_playback_end:
             self.on_playback_end()
 
@@ -172,10 +207,6 @@ class AudioEngine:
 
     # ── HIỆU ỨNG ──────────────────────────────
     def apply_effect(self, effect: str) -> str:
-        """
-        Áp dụng hiệu ứng 'echo' hoặc 'reverb' lên audio hiện tại.
-        Lưu file mới bên cạnh file gốc, trả về đường dẫn.
-        """
         if self.audio_data is None:
             raise ValueError("Chưa tải file âm thanh nào.")
         if effect == "echo":
@@ -203,6 +234,7 @@ class AudioEngine:
         cut_data = self.audio_data[s_idx:e_idx]
         base     = os.path.splitext(os.path.basename(original_path))[0]
         save_dir = os.path.dirname(original_path)
-        new_path = os.path.join(save_dir, f"{base}_cut_{start_sec:.1f}-{end_sec:.1f}.wav")
+        new_path = os.path.join(save_dir,
+                                f"{base}_cut_{start_sec:.1f}-{end_sec:.1f}.wav")
         sf.write(new_path, cut_data, self.audio_sr)
         return new_path
