@@ -13,18 +13,19 @@
 
 | Tính năng | Mô tả |
 |---|---|
-| ⏺ **Ghi âm** | Ghi âm trực tiếp từ microphone, tự động lưu file `.wav` |
+| ⏺ **Ghi âm** | Ghi âm trực tiếp từ microphone, tự động normalize và lưu file `.wav` |
 | 📂 **Nhập file** | Hỗ trợ `.wav`, `.mp3`, `.ogg`, `.flac` |
 | 📋 **Quản lý danh sách** | Xem, chọn, đổi tên, xóa file |
-| ▶ **Phát lại** | Phát file đã chọn với thanh tua linh hoạt |
+| ▶ **Phát lại** | Phát file với normalize tự động, đảm bảo nghe rõ |
 | ⚡ **Đổi tốc độ** | Phát ở tốc độ `0.5x / 1.0x / 1.5x / 2.0x` |
 | 🔊 **Âm lượng** | Điều chỉnh từ `0%` đến `200%` |
-| 〰️ **Sóng âm** | Hiển thị waveform khi chọn file |
+| ⏩ **Tua** | Kéo thanh trượt đến vị trí bất kỳ |
+| 〰️ **Sóng âm** | Hiển thị waveform async khi chọn file |
 | 🖼️ **Xuất PNG** | Lưu ảnh sóng âm ra file `.png` |
-| 🎛️ **Hiệu ứng Echo** | Thêm tiếng vọng lại cho âm thanh |
-| 🌊 **Hiệu ứng Reverb** | Mô phỏng âm vang trong phòng |
-| ✂️ **Cắt đoạn** | Cắt đoạn theo thời gian và lưu file mới |
-| ℹ️ **Thông tin file** | Xem thời lượng, sample rate, kích thước, định dạng |
+| 🔁 **Hiệu ứng Echo** | Thêm tiếng vọng lại, tự lưu file mới |
+| 🌊 **Hiệu ứng Reverb** | Mô phỏng âm vang trong phòng, tự lưu file mới |
+| ✂️ **Cắt đoạn** | Cắt theo thời gian bắt đầu/kết thúc, lưu file mới |
+| ℹ️ **Thông tin file** | Hiển thị tên, thời lượng, sample rate, kích thước, định dạng |
 
 ---
 
@@ -35,10 +36,10 @@ AudioSystem/
 │
 ├── main.py            ← Khởi chạy ứng dụng
 ├── ui.py              ← Giao diện chính (CustomTkinter)
-├── audio.py           ← Xử lý âm thanh (ghi, phát, cắt, tua)
+├── audio.py           ← Xử lý âm thanh (ghi, phát, cắt, tua, normalize)
 ├── effects.py         ← Hiệu ứng âm thanh (Echo, Reverb, Speed)
 ├── file_manager.py    ← Quản lý danh sách file
-├── waveform.py        ← Vẽ sóng âm và xuất PNG
+├── waveform.py        ← Vẽ sóng âm async và xuất PNG
 ├── requirements.txt   ← Danh sách thư viện
 └── README.md          ← Tài liệu dự án
 ```
@@ -76,7 +77,7 @@ python main.py
 | `customtkinter` | ≥ 5.2.0 | Giao diện đồ họa hiện đại |
 | `sounddevice` | ≥ 0.4.6 | Ghi âm và phát âm thanh |
 | `soundfile` | ≥ 0.12.1 | Đọc/ghi file âm thanh |
-| `numpy` | ≥ 1.24.0 | Xử lý mảng tín hiệu số |
+| `numpy` | ≥ 1.24.0 | Xử lý mảng tín hiệu số, normalize |
 | `matplotlib` | ≥ 3.7.0 | Vẽ sóng âm (waveform) |
 | `pydub` | ≥ 0.25.1 | Xử lý định dạng âm thanh |
 
@@ -93,7 +94,7 @@ main.py
         └── waveform.py     (WaveformWidget)
 ```
 
-Mỗi module hoạt động **độc lập**, `ui.py` đóng vai trò kết nối tất cả thông qua callback.
+Mỗi module hoạt động **độc lập**, `ui.py` kết nối tất cả thông qua callback.
 
 ---
 
@@ -102,25 +103,20 @@ Mỗi module hoạt động **độc lập**, `ui.py` đóng vai trò kết nố
 ```
 ~/AudioLab_Recordings/
 ```
-_(Thư mục home của người dùng, tự tạo khi ghi âm lần đầu)_
+_(Tự tạo khi ghi âm lần đầu, file được normalize tự động trước khi lưu)_
 
 ---
 
 ## 👨‍💻 Nhóm phát triển
 
-| Thành viên      | Vai trò                                        |
-|-----------------|------------------------------------------------|
-| Lâm họ Đoàn     | Xây dựng hệ thống, `main.py`                   |
-| ParkDayChun     | `audio.py` – Ghi âm                            |
-| tminhiuem       | `audio.py` – Phát lại, cắt đoạn                |
-| NgocHaiSandwich | `ui.py` – Giao diện                            |
-| Nguyen Khoin    | `waveform.py`, `file_manager.py`, `effects.py` |
+| Thành viên   | Vai trò |
+|--------------|---|
+| Lâm họ Đoàn  | Nhóm trưởng – Kiến trúc hệ thống, `main.py` |
+| ParkDayChun  | `audio.py` – Ghi âm |
+| MinhEdras    | `audio.py` – Phát lại, cắt đoạn |
+| NMH          | `ui.py` – Giao diện |
+| Nguyen Khoin | `waveform.py`, `file_manager.py`, `effects.py` |
 
----
-
-## 📄 License
-
-Dự án phục vụ mục đích **học tập và nghiên cứu** — Môn Lập trình Âm thanh.
 
 ---
 
